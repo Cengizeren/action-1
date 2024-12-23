@@ -21,8 +21,8 @@ jobs:
       #    fi
       - name: Verify CHANGELOG.md is Modified
         run: |
-          CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }})
-          echo "Changed files: $CHANGED_FILES"
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...${{ github.event.pull_request.head.ref }})
+          echo "Changed files in PR: $CHANGED_FILES"
 
           if ! echo "$CHANGED_FILES" | grep -q 'CHANGELOG.md'; then
             echo "::error::The file 'CHANGELOG.md' must be updated for this pull request."
