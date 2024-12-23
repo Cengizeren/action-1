@@ -21,7 +21,7 @@ jobs:
       #    fi
       - name: Verify Changelog Has Meaningful Changes
         run: |
-          if ! git diff --exit-code CHANGELOG.md; then
+          if git diff --exit-code CHANGELOG.md; then
             echo "Error: CHANGELOG.md must have meaningful changes."
             exit 1
           fi
