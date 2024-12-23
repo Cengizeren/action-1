@@ -2,4 +2,4 @@
 
 ### Added
 
-- Changelog implementation1
+- Changelog implementation
