@@ -14,6 +14,20 @@ on:
       - main
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate environment and branch
+        id: validate
+        run: |
+          echo "Current Branch: ${GITHUB_REF}"
+          CURRENT_BRANCH=$(echo "${GITHUB_REF}" | sed 's|refs/heads/||')
+          echo "Current branch2: $CURRENT_BRANCH"
+          if [[ "${{ github.event.inputs.ENV }}" == "prod" && "$CURRENT_BRANCH" != "main" ]]; then
+            echo "Error: Prod environment can only be deployed from the 'main' branch."
+            exit 1
+          fi
+          echo "Environment and branch validation passed." 
   check-changelog:
     runs-on: ubuntu-latest
 
