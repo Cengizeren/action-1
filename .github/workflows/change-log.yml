@@ -17,6 +17,12 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
+      - name: Set environment variable
+        run: |
+          if [[ -z "${{ github.event.inputs.ENV }}" ]]; then
+            echo "ENV=prod" >> $GITHUB_ENV
+          else
+            echo "ENV=${{ github.event.inputs.ENV }}" >> $GITHUB_ENV
       - name: Validate environment and branch
         id: validate
         run: |
