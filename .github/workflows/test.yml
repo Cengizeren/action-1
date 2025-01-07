@@ -1,0 +1,13 @@
+name: Dummy Workflow
+
+on:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hello World
+        id: validate
+        run: |
+          echo "Hello World"           fi
