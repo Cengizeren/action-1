@@ -1,0 +1,130 @@
+name: Label PRs and Extract Jira IDs
+
+on:
+  workflow_run:
+    workflows:
+      - Validate Commits and Branch
+    types:
+      - completed
+#on:
+#  pull_request:
+#    types: [opened, synchronize]
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Set up GitHub CLI
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "GitHub CLI is authenticated using GH_TOKEN"
+
+      - name: Extract Jira ID and Label PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Fetch all commit messages in the pull request
+          echo "Fetching commit messages..."
+          gh pr view ${{ github.event.pull_request.number }} --json commits > pr_commits.json
+          cat pr_commits.json
+          COMMITS=$(jq -r '.commits[].messageHeadline' pr_commits.json)
+          echo "Commit messages fetched: $COMMITS"  
+          
+          if [ -z "$COMMITS" ]; then
+            echo "No commit messages found."
+            exit 1
+          fi
+          JIRA_ID=""
+          LABEL="other"
+          echo "Extracting Jira ID..."
+          for COMMIT in $COMMITS; do
+            if echo "$COMMIT" | grep -qE '[xX][aA][aA][sS][pP]?-[0-9]+'; then
+              JIRA_ID=$(echo "$COMMIT" | grep -oE '[xX][aA][aA][sS][pP]?-[0-9]+')
+              echo "Found Jira ID: $JIRA_ID"
+              break
+            fi
+          done
+          if [ -z "$JIRA_ID" ]; then
+          echo "No Jira ID found."
+          exit 1
+          fi
+          
+          LABELS=()
+          # Set the labels based on the commit message
+          if echo "$COMMIT" | grep -q '^feat'; then
+            LABELS+=("feature")
+            echo "Adding label: feature"
+          fi
+          if echo "$COMMIT" | grep -q '^bugfix'; then
+            LABELS+=("bugfix")
+            echo "Adding label: bugfix"
+          fi
+          if echo "$COMMIT" | grep -q '^refactor'; then
+            LABELS+=("refactor")
+            echo "Adding label: refactor"
+          fi
+          if echo "$COMMIT" | grep -q '^doc'; then
+            LABELS+=("documentation")
+            echo "Adding label: documentation"
+          fi
+          if echo "$COMMIT" | grep -q '^test'; then
+            LABELS+=("test")
+            echo "Adding label: test"
+          fi
+          if echo "$COMMIT" | grep -q '^chore'; then
+            LABELS+=("chore")
+            echo "Adding label: chore"
+          fi
+          # Convert labels array to JSON
+          LABELS_JSON=$(echo '["'${LABELS[@]}'"]' | sed 's/ /","/g')
+          # Use GitHub API to assign labels to pull request
+          curl \
+            -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels \
+            -d "$LABELS_JSON"
+          if [ "$JIRA_ID" = "" ]; then
+            JIRA_ID="N/A"
+          fi
+          
+          echo "Final extracted Jira ID: $JIRA_ID"
+          echo "Final labels: $LABEL"
+          
+          echo "labels=$LABEL" >> $GITHUB_ENV
+          echo "jira_id=$JIRA_ID" >> $GITHUB_ENV
+      - name: Apply Label
+        uses: actions-ecosystem/action-add-labels@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          labels: ${{ env.labels }}
+
+      - name: Add Jira ID and labels to PR Body
+        if: env.jira_id != 'N/A'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          JIRA_ID: ${{ env.jira_id }}
+          LABELS: ${{ env.labels }}
+        run: |
+          BODY=$(jq -r '.body' <"${GITHUB_EVENT_PATH}")
+        
+          # Handle case where body is null
+          if [ "$BODY" == "null" ]; then
+            BODY=""
+          fi
+        
+          UPDATED_BODY="PR Title: $PR_TITLE\nJira ID: $JIRA_ID\nLabels: $LABELS\n\n${BODY}"
+        
+          echo "Updating PR #$PR_NUMBER with PR Title $PR_TITLE, Jira ID $JIRA_ID and labels $LABELS"
+        
+          curl -s -X PATCH \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER \
+            -d "$(jq -nc --arg body "$UPDATED_BODY" '{body: $body}')"
+
