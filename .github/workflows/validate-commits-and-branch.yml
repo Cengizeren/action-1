@@ -1,0 +1,24 @@
+name: Validate Pull Request
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  validate-commits-and-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Make validate.sh executable
+        run: chmod +x ./bin/validate.sh
+
+      - name: Validate Commit Messages and Branch Name
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          export PR_NUMBER=${{ github.event.pull_request.number }}
+          export PR_TARGET_BRANCH=${{ github.event.pull_request.base.ref }}
+          ./bin/validate.sh
+
