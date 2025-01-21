@@ -11,6 +11,9 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v3
 
+      - name: Make validate.sh executable
+        run: chmod +x ./bin/validate.sh
+
       - name: Validate Commit Messages and Branch Name
         env:
           GH_TOKEN: ${{ secrets.RELEASE_BOT }}
