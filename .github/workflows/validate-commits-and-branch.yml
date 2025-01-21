@@ -16,7 +16,7 @@ jobs:
 
       - name: Validate Commit Messages and Branch Name
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_BOT }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           export PR_NUMBER=${{ github.event.pull_request.number }}
           export PR_TARGET_BRANCH=${{ github.event.pull_request.base.ref }}
