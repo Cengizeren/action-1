@@ -13,15 +13,22 @@ categories:
   - title: '📚 Documentation'
     labels:
       - 'documentation'
+exclude-labels:
+  - skip-changelog
+  - invalid
 change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
-version-resolver:
-  major:
-    labels:
-      - 'major'
-  minor:
-    labels:
-      - 'minor'
-  patch:
-    labels:
-      - 'patch'
-  default: patch
+#version-resolver:
+#  major:
+#    labels:
+#      - 'major'
+#  minor:
+#    labels:
+#      - 'minor'
+#  patch:
+#    labels:
+#      - 'patch'
+#  default: patch
+template: |
+  ## Changes
+
+  $CHANGES
