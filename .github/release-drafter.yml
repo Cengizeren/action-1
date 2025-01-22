@@ -13,9 +13,9 @@ categories:
   - title: '📚 Documentation'
     labels:
       - 'documentation'
-exclude-labels:
-  - skip-changelog
-  - invalid
+#exclude-labels:
+#  - skip-changelog
+#  - invalid
 change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
 #version-resolver:
 #  major:
