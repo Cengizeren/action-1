@@ -3,16 +3,18 @@ tag-template: 'v$NEXT_PATCH_VERSION'
 categories:
   - title: '🚀 Features'
     labels:
-      - 'feature'
+      - feature
+      - enhancement
   - title: '🐛 Bug Fixes'
     labels:
-      - 'bugfix'
+      - bugfix
+      - bug
   - title: '🧰 Maintenance'
     labels:
-      - 'chore'
+      - chore
   - title: '📚 Documentation'
     labels:
-      - 'documentation'
+      - documentation
 #exclude-labels:
 #  - skip-changelog
 #  - invalid
