@@ -12,9 +12,14 @@ categories:
   - title: '🧰 Maintenance'
     labels:
       - chore
+      - refactor
   - title: '📚 Documentation'
     labels:
       - documentation
+  - title: '🔄 Dependency Updates'
+    labels:
+      - dependencies
+      - dependency
 #exclude-labels:
 #  - skip-changelog
 #  - invalid
