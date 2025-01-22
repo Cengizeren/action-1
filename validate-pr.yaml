@@ -5,25 +5,8 @@ on:
     types: [opened, synchronize]
 
 jobs:
-  create-labels:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v3
-
-      - name: Create labels
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh label create "feature" --color "#0E8A16" --description "A new feature" || true
-          gh label create "bugfix" --color "#D93F0B" --description "Fixes a bug" || true
-          gh label create "chore" --color "#D4C5F9" --description "Routine maintenance tasks" || true
-          gh label create "refactor" --color "#FBCA04" --description "Code refactoring" || true
-          gh label create "dependencies" --color "#0366D6" --description "Dependency updates" || true
-
   validate-commits-and-branch:
     runs-on: ubuntu-latest
-    needs: [create-labels]
     steps:
       - name: Check out repository
         uses: actions/checkout@v3
@@ -42,7 +25,9 @@ jobs:
   label:
     name: Label PRs and Extract Jira IDs
     runs-on: ubuntu-latest
-    needs: [validate-commits-and-branch, create-labels]
+    needs: [validate-commits-and-branch]
+    outputs:
+      labels: ${{ steps.extract-labels.outputs.labels }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v3
@@ -52,7 +37,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: echo "GitHub CLI is authenticated using GH_TOKEN"
 
-      - name: Extract Jira ID
+      - name: Extract Jira ID and Label PR
         id: extract-labels
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -64,16 +49,17 @@ jobs:
           COMMITS=$(jq -r '.commits[].messageHeadline' pr_commits.json)
           echo "Commit messages fetched: $COMMITS"
 
-          if [ -z "$COMMITS" ]; then
-            echo "No commit messages found."
-            exit 1
-          fi
+            if [ -z "$COMMITS" ]; then
+              echo "No commit messages found."
+              exit 1
+            fi
 
-          JIRA_IDS=()
+            JIRA_IDS=()
+            LABELS=()
 
-          echo "Extracting Jira IDs and processing labels..."
+            echo "Extracting Jira IDs and processing labels..."
 
-          for COMMIT in $COMMITS; do
+            for COMMIT in $COMMITS; do
             if echo "$COMMIT" | grep -qE '[xX][aA][aA][sS][pP]?-[0-9]+'; then
                 NEW_ID=$(echo "$COMMIT" | grep -oE '[xX][aA][aA][sS][pP]?-[0-9]+')
                 if [[ ! " ${JIRA_IDS[@]} " =~ " ${NEW_ID} " ]]; then
@@ -81,45 +67,85 @@ jobs:
                    echo "Found Jira ID: $NEW_ID"
                 fi
             fi
-          done
 
-          JIRA_IDS_JSON=$(echo '["'${JIRA_IDS[@]}'"]' | sed 's/ /","/g')
-          echo "Final Jira IDs: $JIRA_IDS_JSON"
+
+            # The label to be added to the pull request must be one of the labels evaluated by "relase-drafter".
+            if echo "$COMMIT" | grep -q '^feat'; then
+                LABELS+=("feature")
+                echo "Adding label: feature"
+            fi
+            if echo "$COMMIT" | grep -q '^bugfix'; then
+                LABELS+=("bugfix")
+                echo "Adding label: bugfix"
+            fi
+            if echo "$COMMIT" | grep -q '^refactor'; then
+                LABELS+=("refactor")
+                echo "Adding label: refactor"
+            fi
+            if echo "$COMMIT" | grep -q '^doc'; then
+                LABELS+=("documentation")
+                echo "Adding label: documentation"
+            fi
+            if echo "$COMMIT" | grep -q '^test'; then
+                LABELS+=("test")
+                echo "Adding label: test"
+            fi
+            if echo "$COMMIT" | grep -q '^chore'; then
+                LABELS+=("chore")
+                echo "Adding label: chore"
+            fi
+            done
+
+            # TODO: Should we exit in this case?
+            if [ ${#JIRA_IDS[@]} -eq 0 ]; then
+               echo "No Jira IDs found."
+               exit 1
+            fi
+
+            if [ ${#LABELS[@]} -eq 0 ]; then
+               echo "No suitable label found."
+               exit 1
+            fi
+
+            #if [ "$JIRA_ID" = "" ]; then
+            #  JIRA_ID="N/A"
+            #fi
+
+            UNIQUE_LABELS=($(echo "${LABELS[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+
+            JIRA_IDS_JSON=$(echo '["'${JIRA_IDS[@]}'"]' | sed 's/ /","/g')
+            LABELS_JSON=$(echo '["'${UNIQUE_LABELS[@]}'"]' | sed 's/ /","/g')
+            COMMA_SEPERATED_LABELS=$(IFS=,; echo "${UNIQUE_LABELS[*]}")
+
+            echo "Final Jira IDs: $JIRA_IDS_JSON"
+            echo "Final Labels JSON: $LABELS_JSON"
+            echo "Comma seperated labels: ${COMMA_SEPERATED_LABELS}"
+          # Use GitHub API to assign labels to pull request
+          curl \
+            -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels \
+            -d 
+            #-d "{\"labels\": ${LABELS_JSON}}"
+
+          echo "labels=${COMMA_SEPERATED_LABELS}" >> $GITHUB_ENV
+          #echo "labels=$LABELS_JSON" >> $GITHUB_ENV
           echo "jira_id=$JIRA_IDS_JSON" >> $GITHUB_ENV
+      #- name: Apply Label
+      #  uses: actions-ecosystem/action-add-labels@v1
+      #  with:
+      #    github_token: ${{ secrets.GITHUB_TOKEN }}
+      #    labels: ${{ env.labels }}
+      #    number: ${{ github.event.pull_request.number }}
 
-      - name: Determine Branch Type
-        id: determine-branch
-        run: |
-          BRANCH_NAME=${{ github.event.pull_request.head.ref }}
-          echo "Branch name is: $BRANCH_NAME"
-
-          if [[ $BRANCH_NAME =~ ^feature/ ]]; then
-            echo "label=feature" >> $GITHUB_ENV
-          elif [[ $BRANCH_NAME =~ ^bugfix/* ]]; then
-            echo "label=bugfix" >> $GITHUB_ENV
-          elif [[ $BRANCH_NAME =~ ^chore/* ]]; then
-            echo "label=chore" >> $GITHUB_ENV
-          elif [[ $BRANCH_NAME =~ ^refactor/* ]]; then
-            echo "label=refactor" >> $GITHUB_ENV
-          elif [[ $BRANCH_NAME =~ ^documentation/* ]]; then
-            echo "label=documentation" >> $GITHUB_ENV
-          else
-            echo "label=other" >> $GITHUB_ENV
-          fi
-
-      - name: Add Label to PR
-        if: env.label != 'other'
-        uses: actions-ecosystem/action-add-labels@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          labels: ${{ env.label }}
-        
       - name: Add Jira ID and labels to PR Body
+        if: env.jira_id != 'N/A'
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_TITLE: ${{ github.event.pull_request.title }}
           JIRA_ID: ${{ env.jira_id }}
-          LABEL: ${{ env.label }}
+          LABELS: ${{ env.labels }}
         run: |
 
           BODY=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
@@ -130,8 +156,8 @@ jobs:
           fi
 
           echo "BODY: $BODY"
-          echo "LABEL: $LABEL"
-          NEW_CONTENT=$(echo -e "PR Title: $PR_TITLE\nJira ID: $JIRA_ID\nLabel: $LABEL")
+          echo "LABELS: $LABELS"
+          NEW_CONTENT=$(echo -e "PR Title: $PR_TITLE\nJira ID: $JIRA_ID\nLabels: $LABELS")
           echo "NEW CONTENT: $NEW_CONTENT"
           # If body has the NEW_CONTENT, do not update the body
           if echo -e "$BODY" | grep -qF "$(echo -e "$NEW_CONTENT")"; then
@@ -141,7 +167,8 @@ jobs:
 
           UPDATED_BODY=$(echo -e "$NEW_CONTENT\n\n$BODY")
 
-          echo "Updating PR #$PR_NUMBER with PR Title $PR_TITLE, Jira IDs $JIRA_ID and label $LABEL"
+          echo "Updating PR #$PR_NUMBER with PR Title $PR_TITLE, Jira IDs $JIRA_ID and labels $LABELS"
+          echo "test2"
           curl -s -X PATCH \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
@@ -151,7 +178,7 @@ jobs:
       - name: Verify Labels on PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          LABELS: ${{ env.label }}
+          LABELS: ${{ env.labels }}
         run: |
           echo "Verifying labels on PR #${{ github.event.pull_request.number }}"
 
@@ -167,15 +194,12 @@ jobs:
           else
              # Compare with expected labels
              MISSING_LABELS=()
-             #IFS=',' read -ra label_array <<< "$labels"
-             #for LABEL in "${label_array[@]}"; do
-             #  if ! echo "$EXISTING_LABELS" | grep -q "$LABEL"; then
-             #    MISSING_LABELS+=("$LABEL")
-             #  fi
-             #done
-             if ! echo "$EXISTING_LABELS" | grep -q "$LABEL"; then
-               MISSING_LABELS+=("$LABEL")
-             fi
+             IFS=',' read -ra label_array <<< "$labels"
+             for LABEL in "${label_array[@]}"; do
+               if ! echo "$EXISTING_LABELS" | grep -q "$LABEL"; then
+                 MISSING_LABELS+=("$LABEL")
+               fi
+             done
           fi
 
           if [ ${#MISSING_LABELS[@]} -eq 0 ]; then
@@ -188,7 +212,7 @@ jobs:
   validate-pr-title:
     name: Validate PR Title
     runs-on: ubuntu-latest
-    needs: [validate-commits-and-branch, label, create-labels]
+    needs: [validate-commits-and-branch, label]
     steps:
       - name: Check out repository
         uses: actions/checkout@v3

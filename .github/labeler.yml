@@ -1,0 +1,20 @@
+feature:
+  - head-branch: ['^feature/.*']
+
+bugfix:
+  - head-branch: ['^bugfix/.*']
+
+refactor:
+  - head-branch: ['^refactor/.*']
+
+documentation:
+  - head-branch: ['^documentation/.*']
+    changed-files:
+      - '*.md'
+
+test:
+  - head-branch: ['^test/.*']
+
+chore:
+  - head-branch: ['^chore/.*']
+
