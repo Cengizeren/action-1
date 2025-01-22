@@ -18,7 +18,7 @@ jobs:
 
       - name: Set up GitHub CLI
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_BOT }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: echo "GitHub CLI is authenticated using GH_TOKEN"
 
       - name: Release Drafter
@@ -26,4 +26,4 @@ jobs:
         with:
           config-name: release-drafter.yml
         env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_BOT }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
