@@ -87,8 +87,7 @@ jobs:
           echo "Final Jira IDs: $JIRA_IDS_JSON"
           echo "jira_id=$JIRA_IDS_JSON" >> $GITHUB_ENV
 
-      - name: Determine Branch Type
-        id: determine-branch
+      - name: Determine Label Type
         run: |
           BRANCH_NAME=${{ github.event.pull_request.head.ref }}
           echo "Branch name is: $BRANCH_NAME"
