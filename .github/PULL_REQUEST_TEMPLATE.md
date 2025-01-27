@@ -4,7 +4,7 @@
 ## Impact (required)
 <!-- Discuss the impact of your changes on the project. This might include effects on performance, new dependencies, or changes in behaviour. -->
 
-## Testing (required)
+## Tests (required)
 <!-- Describe the tests you performed to ensure the functionality works as expected. Include manual testing steps or automated test coverage details. -->
 
 ## Additional Information (optional)

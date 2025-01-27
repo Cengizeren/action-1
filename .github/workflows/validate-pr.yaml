@@ -2,10 +2,11 @@ name: Validate PR
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, edited]
 
 jobs:
   create-labels:
+    name: Create the Necessary Labels
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -22,8 +23,9 @@ jobs:
           gh label create "dependencies" --color "#0366D6" --description "Dependency updates" || true
 
   validate-commits-and-branch:
+    name: Validate Commits and Branch Name
     runs-on: ubuntu-latest
-    needs: [create-labels]
+    if: github.event.action == 'opened' || github.event.action == 'synchronize'
     steps:
       - name: Check out repository
         uses: actions/checkout@v3
@@ -42,7 +44,8 @@ jobs:
   label:
     name: Label PRs and Extract Jira IDs
     runs-on: ubuntu-latest
-    needs: [validate-commits-and-branch, create-labels]
+    if: github.event.action == 'opened' || github.event.action == 'synchronize'
+    needs: [create-labels, validate-commits-and-branch]
     steps:
       - name: Check out repository
         uses: actions/checkout@v3
@@ -187,7 +190,7 @@ jobs:
   validate-pr-title:
     name: Validate PR Title
     runs-on: ubuntu-latest
-    needs: [validate-commits-and-branch, label, create-labels]
+    #needs: [create-labels, validate-commits-and-branch, label]
     steps:
       - name: Check out repository
         uses: actions/checkout@v3
@@ -216,3 +219,38 @@ jobs:
           else
             echo "PR title format is valid."
           fi
+  validate-pr-body:
+    name: Validate PR Message Body
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the Required Sections of PR Message Body
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const requiredSections = {
+              '## Description (required)': 'Description section is required and cannot be empty.',
+              '## Impact (required)': 'Impact section is required and cannot be empty.',
+              '## Tests (required)': 'Tests section is required and cannot be empty.',
+            };
+            
+            // Get the PR body
+            const prBody = context.payload.pull_request.body || '';
+            
+            // Define an array to keep track of missing or incorrectly filled sections
+            const missingSections = [];
+            
+            // Check the required sections
+            for (const [section, errorMessage] of Object.entries(requiredSections)) {
+              if (
+                !prBody.includes(section) || // if the section does not exist
+                prBody.split(section)[1].trim().startsWith('<!--') || // If the default HTML message has not been changed
+                prBody.split(section)[1].trim() === '' // If the section is completely empty
+              ) {
+                missingSections.push(errorMessage); // Add the missing sections into the list
+              }
+            }
+            
+            // If there are missing sections, return them all as a single message
+            if (missingSections.length > 0) {
+              core.setFailed(`PR validation failed:\n- ${missingSections.join('\n- ')}`);
+            }
