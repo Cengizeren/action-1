@@ -16,13 +16,24 @@ categories:
   - title: '📚 Documentation'
     labels:
       - documentation
-  - title: '🔄 Dependency Updates'
+      - docs
+  - title: '🧪 Tests'
     labels:
-      - dependencies
-      - dependency
-#exclude-labels:
-#  - skip-changelog
-#  - invalid
+      - test
+include-labels:
+   - feature
+   - enhancement
+   - bugfix
+   - bug
+   - chore
+   - refactor
+   - documentation
+   - docs
+   - test
+exclude-labels:
+  - skip-changelog
+  - invalid
+  - other
 change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
 version-resolver:
   major:
