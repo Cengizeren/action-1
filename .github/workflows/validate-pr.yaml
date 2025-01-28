@@ -16,6 +16,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          gh label create "breaking-change" --color "#D73A4A" --description "used for changes that introduce backward-incompatible modifications to the codebase" || true
           gh label create "feature" --color "#0E8A16" --description "new feature for the user, not a new feature for build script" || true
           gh label create "bugfix" --color "#D93F0B" --description "bugfix for the user, not a fix to a build script" || true
           gh label create "chore" --color "#D4C5F9" --description "formatting, devops and ci work; no production code change" || true
