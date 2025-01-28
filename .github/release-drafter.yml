@@ -3,6 +3,10 @@
 name-template: 'v$RESOLVED_VERSION'
 tag-template: 'v$RESOLVED_VERSION'
 categories:
+  - title: '⚠️ Breaking Changes'
+    labels:
+      - breaking-change
+      - major
   - title: '🚀 Features'
     labels:
       - feature
@@ -23,6 +27,8 @@ categories:
     labels:
       - test
 include-labels:
+   - breaking-change
+   - major
    - feature
    - enhancement
    - bugfix
@@ -37,17 +43,25 @@ exclude-labels:
   - invalid
   - other
 change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
-#version-resolver:
-#  major:
-#    labels:
-#      - 'major'
-#  minor:
-#    labels:
-#      - 'minor'
-#  patch:
-#    labels:
-#      - 'patch'
-#  default: patch
+version-resolver:
+  major:
+    labels:
+      - 'breaking-change'
+      - 'major'
+  minor:
+    labels:
+      - 'feature'
+      - 'enhancement'
+  patch:
+    labels:
+      - 'bugfix'
+      - 'bug'
+      - 'chore'
+      - 'refactor'
+      - 'documentation'
+      - 'docs'
+      - 'test'
+  default: patch
 template: |
   ## Changes
 
