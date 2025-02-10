@@ -1,0 +1,28 @@
+name: Scheduled-Demo
+on:
+  schedule:
+    - cron: "05 20 * * *"
+  workflow_dispatch:
+    inputs:
+      jira_url:
+        description: 'JIRA URL (e.g., jira.xxx-group.com, stage4-test.jira.xxx-group.com)'
+        required: true
+jobs:
+  scheduled-matrix:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment:
+          - stage
+          - prod
+        exclude:
+          - environment: ${{ github.event_name == 'scheduled' && github.ref != 'refs/heads/main' && 'prod' }}
+          - environment: ${{ github.event_name == 'workflow_dispatch' && !contains(github.event.inputs.jira_url, 'stage') && 'stage' }}
+          - environment: ${{ github.event_name == 'workflow_dispatch' && contains(github.event.inputs.jira_url, 'stage') && 'prod' }}
+    environment: ${{ matrix.environment }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Environment Test
+        run: |
+          echo "${{ matrix.environment }}"
